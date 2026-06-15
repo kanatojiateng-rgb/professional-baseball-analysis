@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>プロ野球選手データ分析</title>
+</head>
+<body>
+<h1>Professional Baseball Analysis</h1>
+<div class="main-container">
+  <h2>データの登録と分析</h2>
+
+<div class="box">
+  <form action="/analyze" method="POST">
+
+  <p>年度:
+  <select name="start_year">
+  {% for year in years %}
+    <option value="{{ year }}">{{ year }}年</option>
+    {% endfor %}
+  </select>
+  </p>
+
+  <p>終了年度:
+  <select name="end_year">
+   {% for year in years %}
+   <option value="{{ year }}">{{ year }}年</option>
+   {% endfor %}</select> 
+</p>
+
+<p>チーム名:
+  <select id="teamSelector1" name="team_ids" multiple size="6">
+   <option value="">チームを選択</option>
+   <option value="hanshin">阪神タイガース</option>
+   <option value="giants">読売ジャイアンツ</option>
+   <option value="yakult">東京ヤクルトスワローズ</option>
+   <option value="chunichi">中日ドラゴンズ</option>
+   <option value="carp">広島東洋カープ</option>
+   <option value="dena">横浜DeNAベイスターズ</option> 
+   <option value="hawks">福岡ソフトバンクホークス</option>
+   <option value="lions">埼玉西武ライオンズ</option>
+   <option value="marines">千葉ロッテマリーンズ</option>
+   <option value="eagles">東北楽天ゴールデンイーグルス</option>
+   <option value="fighters">北海道日本ハムファイターズ</option>
+   <option value="buffaloes">オリックスバファローズ</option>
+  </select>
+</p>
+
+<p>選手（複数選択可）:
+  <select id="player-select" name="players" multiple>
+    <option value="">先にチームを選択してください</option>
+</select>
+<br><small>※Ctrl(Command)キーを押しながら選ぶと複数選択できます</small>
+</p>
+
+
+<p>分析項目:
+  <select id="analysisItem" name="item">
+    {% for item in items %}
+      <option value="{{ item }}">{{ item }}</option>
+    {% endfor %}
+  </select>
+</p>
+
+  <p>
+    <button type="submit" class="submit-btn">分析を実行する</button>
+     </p>
+   </form>
+  </div>
+ </div>
+
+ <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+
+
+<style>
+h1 {
+  color: red;
+  text-align: center;
+  font-size: 40px;
+}
+
+body {
+  background-color: bisque;
+}
+
+h2 {
+  margin-top: 80px;
+  color: blue;
+  font-size: 35px;
+  text-align: center;
+}
+
+.box {
+  margin-top: 50px;
+  font-size: 35px;
+  text-align: center;
+}
+
+.box p {
+  color: plum;
+}
+
+
+/* セレクトボックスやボタンが小さくならないように調整 */
+select, input, .submit-btn {
+  font-size: 24px;
+  padding: 5px;
+}
+
+.submit-btn {
+  margin-top: 20px;
+  background-color: green;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.submit-btn:hover {
+  background-color: green;
+}
+</style>
+</html>
