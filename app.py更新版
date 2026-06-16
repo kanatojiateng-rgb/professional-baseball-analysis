@@ -4,8 +4,6 @@ import json
 
 app = Flask(__name__)
 
-
-
 TEAM_MAP = { 
     "hanshin": ["阪神タイガース"],
     "giants": ["読売ジャイアンツ"],
@@ -20,82 +18,77 @@ TEAM_MAP = {
     "eagles": ["東北楽天ゴールデンイーグルス"],
     "buffaloes": ["オリックスバファローズ"]
 }
+
 @app.route('/')
 def index():
-    #1. CSVファイルを読み込む
     df = pd.read_csv('data.csv', encoding='UTF-8')
-
-    #2. 分析に使う項目をリスト化する
     exclude_columns = ['年度', 'チーム', '選手', '選手名'] 
-    
     analysis_items = [col for col in df.columns.tolist() if col not in exclude_columns]
-    
     year_list = sorted(df['年度'].dropna().unique().tolist())
-  #3. HTML(index.html)に項目リストを渡して表示させる
     return render_template('index.html', items=analysis_items, years=year_list)
-
 
 @app.route('/get_players', methods=['GET'])
 def get_players():
     team_ids = request.args.getlist('team_ids')
     start_year = int(request.args.get('start_year', 2005))
     end_year = int(request.args.get('end_year', 2026))
-    team_name_list = []
-
-    for team_id in team_ids:
-        team_name_list.extend(
-            TEAM_MAP.get(team_id, [])
-        )
-
-
-    if not team_name_list:    
-        return jsonify([])
     
+    if not team_ids:    
+        return jsonify([])
+          
     try:
-        # CSVを読み込む
         df = pd.read_csv('data.csv', encoding='UTF-8')
         team_col = [col for col in df.columns if 'チーム' in col][0]
-        
+    
+        players_with_teams = []
 
-        # チーム名でフィルタリング
-        filtered_df = df[
-            (df[team_col].astype(str).isin(team_name_list)) &
-            (df['年度'].astype(int) >= start_year) &
-            (df['年度'].astype(int) <= end_year)
-    ]
+        #  チームごとにループを回し、チーム名と選手リストのペアを辞書形式で作る
+        for team_id in team_ids:
+            team_names = TEAM_MAP.get(team_id, [])
+            if not team_names:
+                continue
+            
+            # そのチームの該当年度のデータのみを抽出
+            team_df = df[
+                (df[team_col].astype(str).isin(team_names)) &
+                (df['年度'].astype(int) >= start_year) &
+                (df['年度'].astype(int) <= end_year)
+            ]
+            
+            raw_players = team_df['選手'].dropna().astype(str).str.strip().unique().tolist()
+            filtered_players = [p for p in raw_players if p not in ['', '*', '+', '選手', '選手名', 'nan', '年度']]
+            
+            # 選手が存在する場合のみ、チームごとにまとめてリストに追加
+            if filtered_players:
+                players_with_teams.append({
+                    'team_name': team_names[0],
+                    'player_list': filtered_players
+                })
         
-        # 選手名の取得
-        raw_players = filtered_df['選手'].dropna().astype(str).str.strip().unique().tolist()
-        
-        # 不要なデータの除外
-        filtered_players = [p for p in raw_players if p not in ['', '*', '+', '選手', '選手名', 'nan', '年度']]
-        
-        print(f"DEBUG: 検索対象のチーム名: {team_name_list}, 抽出された選手数: {len(filtered_players)}")
-        return jsonify(filtered_players)  
+        print(f"DEBUG: 抽出されたチーム数: {len(players_with_teams)}")
+        return jsonify(players_with_teams)  # グループ化されたデータを返す
     
     except Exception as e:
-       print(f"エラー発生: {e}")
-       return jsonify([])
+        print(f"エラー発生: {e}")
+        return jsonify([])
 
-
-    # フォームが送信されたときの処理を追加
 @app.route('/analyze', methods=['POST'])
 def analyze():
     print(f"受信した全データ: {request.form.to_dict()}")
-    # HTMLの各サジェストや入力欄から値を取得（name属性をキーにする）
     selected_players = request.form.getlist('players')
-    selected_item = request.form.get('item')
+    selected_items = request.form.getlist('items')
+
+    if len(selected_items) > 2:
+        return "分析項目は２つまで選択してください"
+    
     start_year = int(request.form.get('start_year', 2005))
     end_year = int(request.form.get('end_year', 2026))
 
     if start_year > end_year:
         return "開始年度は終了年度以下にしてください"
     
-    
-    # 1. CSVの読み込み
     df = pd.read_csv('data.csv', encoding='UTF-8')
 
-    # 2. 条件の絞り込み
     filtered_df = df[
        (df['選手'].isin(selected_players)) &
        (df['年度'].astype(int) >= start_year) &
@@ -105,26 +98,27 @@ def analyze():
     datasets = []
     all_years = []
 
-
     for player in selected_players:
         player_df = filtered_df[filtered_df['選手'] == player]
 
-
         if not player_df.empty:
-
             if not all_years:
                 all_years = player_df['年度'].astype(str).tolist()
 
-
-        datasets.append({
-            'label': player,
-            'data': player_df[selected_item].fillna(0).tolist()
-        })
+        for index, item in enumerate(selected_items):
+            chart_type = 'line' if index == 1 else 'bar'
+            datasets.append({
+                'label': f"{player} ({item})",
+                'data': player_df[item].fillna(0).tolist(),
+                'item': item,
+                'type': chart_type,
+                'fill': False,
+                'tension': 0.1
+            })
         
-
-    # 修正ポイント: 文字列を返すのではなく、テンプレートを返す
     return render_template('analysis.html',
-                           item=selected_item,
+                           item=selected_items,
+                           items_json=json.dumps(selected_items, ensure_ascii=False),
                            labels=json.dumps(all_years),
                            datasets=json.dumps(datasets))
 
