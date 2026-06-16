@@ -13,6 +13,7 @@ function updatePlayers(event) {
         teamSelector.selectedOptions
     ).map(option => option.value); 
 
+    console.log("JSが取得したチームID:", teamIds);
     playerSelect.innerHTML = '<option>読み込み中...</option>';
 
     if (!teamIds.length === 0) {
