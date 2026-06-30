@@ -5,6 +5,30 @@
 <title>プロ野球選手データ分析</title>
 </head>
 <body>
+<!-- 画面右上の使い方案内（ここから） -->
+<div style="position: absolute; top: 20px; right: 20px; background: rgba(255, 255, 255, 0.9); border: 1px solid #999; border-radius: 8px; padding: 18px 22px; font-size: 18px; line-height: 1.5; max-width: 340px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 1000;">
+  <strong style="display: block; margin-bottom: 10px; color: #222; border-bottom: 1px solid #ccc; padding-bottom: 5px; font-size: 20px;">📊 本アプリの使用説明</strong>
+  <ol style="margin: 0; padding-left: 24px; color: #333;">
+    
+    <li style="margin-bottom: 10px; padding-left: 4px;">
+      <strong>データタイプを選択</strong><br>
+      <span style="font-size: 15px; color: #555;">「打者」または「投手」を選びます。</span>
+    </li>
+    <li style="margin-bottom: 10px; padding-left: 4px;">
+      <strong>対象の年度を指定</strong><br>
+      <span style="font-size: 15px; color: #555;">開始年度と終了年度を選びます。</span>
+    </li>
+    <li style="margin-bottom: 10px; padding-left: 4px;">
+      <strong>チーム・選手・分析項目を選択</strong><br>
+      <span style="font-size: 14px; color: #555;">複数選択OK！Ctrlキーを押しながら選ぶと、複数選んで比較できます。（※分析項目は2つまで選択可能）</span>
+    </li>
+    <li style="margin-bottom: 10px; padding-left: 4px;">
+      <strong>「分析を実行する」をクリック</strong><br>
+      <span style="font-size: 14px; color: #555;">自動でわかりやすい複合グラフが可視化されます。</span>
+    </li>
+  </ol>
+</div>
+<!-- 画面右上の使い方案内（ここまで） -->
 <h1>Professional Baseball Analysis</h1>
 <div class="main-container">
   <h2>データの登録と分析</h2>
@@ -21,7 +45,6 @@
   </label>
   </p>
   <input type="hidden" id="active-player-type" name="player_type" value="batter">
-  </p>
   
   <p>年度:
   <select name="start_year">
@@ -83,12 +106,23 @@
   </div>
  </div>
 
+<footer class="footer-credit">
+  <p>データ引用元：<a href="https://npb.jp/bis/2024/stats/idp1_g.html" target="_blank" rel="noopener noreferrer">一般社団法人日本野球機構 (NPB) オフィシャルサイト</a></p>
+</footer>
+
  <script src="{{ url_for('static', filename='script.js') }}"></script>
 
 </body>
 
 
 <style>
+.main-container {
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 0;
+}
+
 h1 {
   color: red;
   text-align: center;
@@ -110,6 +144,7 @@ h2 {
   margin-top: 50px;
   font-size: 35px;
   text-align: center;
+  width: 100%;
 }
 
 .box p {
@@ -135,6 +170,24 @@ select, input, .submit-btn {
 
 .submit-btn:hover {
   background-color: green;
+}
+
+/* （中略：既存のスタイルルール） */
+
+.submit-btn:hover {
+  background-color: green;
+}
+
+.footer-credit {
+  margin-top: 60px;   /* 上のコンテンツとの間に少し余白を作る */
+  margin-bottom: 30px;/* 画面最下部ピタピタにならないように余白を作る */
+  text-align: center; /* 文字を真ん中寄せ */
+  font-size: 16px;    /* 他の文字（35px等）より少し小さくして目立たせない */
+}
+
+.footer-credit a {
+  color: #333;        /* リンクの文字色 */
+  text-decoration: underline; /* リンクと分かりやすいように下線を入れる */
 }
 </style>
 </html>
