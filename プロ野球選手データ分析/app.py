@@ -156,11 +156,16 @@ def analyze():
     all_years = [str(y) for y in range(start_year, end_year + 1)]
 
     for player in selected_players:
-        
+
+
         this_player_df = filtered_df[
             filtered_df[player_col] == player
         ]
 
+        if this_player_df.empty:
+            continue
+        
+        print(this_player_df[['年度', team_col]])
         available_years = this_player_df['年度'].unique()
 
         this_player_data_for_items = {item: [] for item in selected_items}
@@ -170,7 +175,7 @@ def analyze():
             y = int(y_str)
 
             if y in available_years:
-            
+                print(this_player_df[['年度', team_col]])
                 target_row = this_player_df[this_player_df['年度'] == y].iloc[0] # その年度の行を取得
 
                 for item in selected_items:
