@@ -30,7 +30,7 @@ def index():
     csv_file = get_csv_by_type('batter')
     df = pd.read_csv(csv_file, encoding='UTF-8')
 
-    exclude_columns = ['年度', 'チーム', '選手', '選手名', '投　手', 'Unnamed: 2' 'Unnamed: 16'] 
+    exclude_columns = ['年度', 'チーム', '選手', '選手名', '投　手', 'Unnamed: 2', 'Unnamed: 16'] 
     analysis_items = [col for col in df.columns.tolist() if col not in exclude_columns]
     year_list = sorted(df['年度'].dropna().unique().tolist())
     return render_template('index.html', items=analysis_items, years=year_list)
@@ -109,10 +109,14 @@ def get_players():
 @app.route('/analyze', methods=['POST'])
 def analyze():
     selected_players = request.form.getlist('players')
+    print(selected_players)
     selected_items = request.form.getlist('items')
     player_type = request.form.get('player_type', 'batter')
+    selected_team_ids = request.form.getlist('team_ids')
 
-
+    target_team_names = []
+    for t_id in selected_team_ids:
+        target_team_names.extend(TEAM_MAP.get(t_id, []))
     if len(selected_items) > 2:
         return "分析項目は２つまで選択してください"
     
@@ -130,6 +134,16 @@ def analyze():
         df['Unnamed: 2'] = pd.to_numeric(df['Unnamed: 2'], errors='coerce').fillna(0)
         df['投球回'] = pd.to_numeric(df['投球回'], errors='coerce').fillna(0)
         df['投球回'] = df['投球回'] + df['Unnamed: 2'] * (10 / 3)
+    
+    for col in df.columns:
+        if 'チーム' in col:
+            df[col] = df[col].astype(str).str.strip().str.replace('*', '', regex=False)
+
+    team_col_list = [col for col in df.columns if 'チーム' in col]
+    if not team_col_list:
+        return f"エラー: CSVに 'チーム' 列が見つかりません"
+    team_col = team_col_list[0]
+
     player_col = '投　手' if player_type == 'pitcher' else '選手'
 
     filtered_df = df[
@@ -139,25 +153,53 @@ def analyze():
     ].sort_values('年度')
 
     datasets = []
-    all_years = []
+    all_years = [str(y) for y in range(start_year, end_year + 1)]
 
     for player in selected_players:
-        player_df = filtered_df[filtered_df[player_col] == player]
+        
+        this_player_df = filtered_df[
+            filtered_df[player_col] == player
+        ]
 
-        if not player_df.empty:
-            if not all_years:
-                all_years = player_df['年度'].astype(str).tolist()
+        available_years = this_player_df['年度'].unique()
 
+        this_player_data_for_items = {item: [] for item in selected_items}
+        is_my_team_data = []
+    
+        for y_str in all_years:
+            y = int(y_str)
+
+            if y in available_years:
+            
+                target_row = this_player_df[this_player_df['年度'] == y].iloc[0] # その年度の行を取得
+
+                for item in selected_items:
+                    value = target_row[item]
+                    this_player_data_for_items[item].append(float(value) if pd.notna(value) else 0
+                    )
+
+                team_name = str(target_row[team_col]).strip()    
+                is_my_team_data.append(team_name in target_team_names)
+            
+            else:
+                # データがない（その年はいなかった）場合 ➔ 0とFalseで埋める
+                for item in selected_items:
+                    this_player_data_for_items[item].append(0) # 0で埋める
+                is_my_team_data.append(False)
         for index, item in enumerate(selected_items):
             chart_type = 'line' if index == 1 else 'bar'
+
+            print(player)
+            print(this_player_data_for_items[item])
             datasets.append({
-                'label': f"{player} ({item})",
-                'data': player_df[item].fillna(0).tolist(),
-                'item': item,
-                'type': chart_type,
-                'fill': False,
-                'tension': 0.1
-            })
+            'label': f"{player} ({item})",
+            'data': this_player_data_for_items[item],
+            'isMyTeam': is_my_team_data,
+            'item': item,
+            'type': chart_type,
+            'fill': False,
+            'tension': 0.1
+        })
         
     return render_template('analysis.html',
                            item=selected_items,

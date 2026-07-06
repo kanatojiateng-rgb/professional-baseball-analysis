@@ -2,6 +2,9 @@
 // 別のJSファイルだが、グローバルスコープの変数としてchartLabelsなどが参照可能
 const ctx = document.getElementById('myChart').getContext('2d');
 
+console.log(chartLabels);
+console.log(chartDatasets);console.log(chartLabels);
+
 const itemLeft = selectedItems[0] || "項目１";
 const itemRight = selectedItems[1] || "項目２";
 
@@ -53,6 +56,7 @@ new Chart(ctx, {
       };
     })
     },
+    
     options: {
       layout: {
         padding: {
