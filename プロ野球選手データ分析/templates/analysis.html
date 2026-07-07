@@ -54,7 +54,7 @@ canvas {
  // ここでPythonのデータをJSの変数に変換して渡す（これだけはHTML側に書く）
  const chartLabels = {{ labels | safe }};
  const chartDatasets = {{ datasets | safe }}; // 複数データセット
- const selectedItems = {{ item | safe }};
+ const selectedItems = {{ items_json | safe }};
 </script>
 
 <script src="{{ url_for('static', filename='analysis_chart.js') }}"></script>

@@ -109,7 +109,7 @@ def get_players():
 @app.route('/analyze', methods=['POST'])
 def analyze():
     selected_players = request.form.getlist('players')
-    print(selected_players)
+    print("選択された選手:", selected_players)
     selected_items = request.form.getlist('items')
     player_type = request.form.get('player_type', 'batter')
     selected_team_ids = request.form.getlist('team_ids')
@@ -117,6 +117,7 @@ def analyze():
     target_team_names = []
     for t_id in selected_team_ids:
         target_team_names.extend(TEAM_MAP.get(t_id, []))
+        
     if len(selected_items) > 2:
         return "分析項目は２つまで選択してください"
     
@@ -144,8 +145,9 @@ def analyze():
         return f"エラー: CSVに 'チーム' 列が見つかりません"
     team_col = team_col_list[0]
 
-    player_col = '投　手' if player_type == 'pitcher' else '選手'
+    player_col = '投 手' if player_type == 'pitcher' else '選手'
 
+    # 選択された選手の全データを抽出
     filtered_df = df[
        (df[player_col].isin(selected_players)) &
        (df['年度'] >= start_year) &
@@ -156,55 +158,60 @@ def analyze():
     all_years = [str(y) for y in range(start_year, end_year + 1)]
 
     for player in selected_players:
-
-
-        this_player_df = filtered_df[
-            filtered_df[player_col] == player
-        ]
+        this_player_df = filtered_df[filtered_df[player_col] == player]
 
         if this_player_df.empty:
             continue
         
-        print(this_player_df[['年度', team_col]])
-        available_years = this_player_df['年度'].unique()
-
-        this_player_data_for_items = {item: [] for item in selected_items}
-        is_my_team_data = []
+        # 項目ごとにデータを格納する配列を初期化
+        this_player_data_for_items = {an_item: [] for an_item in selected_items}
+        team_list_data = [] # ★チーム名文字列を格納する配列
     
+        # 年度のループ
         for y_str in all_years:
             y = int(y_str)
+            year_df = this_player_df[this_player_df['年度'] == y]
 
-            if y in available_years:
-                print(this_player_df[['年度', team_col]])
-                target_row = this_player_df[this_player_df['年度'] == y].iloc[0] # その年度の行を取得
-
-                for item in selected_items:
-                    value = target_row[item]
-                    this_player_data_for_items[item].append(float(value) if pd.notna(value) else 0
+            if not year_df.empty:
+                # データがある場合
+                for an_item in selected_items:
+                    # 合算する項目
+                    if an_item in ["打席", "打数", "安打", "本塁打", "打点", "盗塁", "試合", "得点", "三振", "四球", "死球", "犠打", "犠飛", "勝利", "敗戦", "セーブ", "ホールド"]:
+                        value = year_df[an_item].sum()
+                    # 平均する項目
+                    elif an_item in ["打率", "出塁率", "長打率", "OPS", "防御率"]:
+                        value = year_df[an_item].mean()
+                    # その他
+                    else:
+                        value = year_df[an_item].iloc[-1]
+                    
+                    this_player_data_for_items[an_item].append(
+                        float(value) if pd.notna(value) else 0.0
                     )
 
-                team_name = str(target_row[team_col]).strip()    
-                is_my_team_data.append(team_name in target_team_names)
-            
+                # ★その年のチーム名を取得して結合する
+                teams = year_df[team_col].dropna().astype(str).tolist()
+                team_string = "、".join(teams) if teams else "所属なし"
+                team_list_data.append(team_string)
             else:
-                # データがない（その年はいなかった）場合 ➔ 0とFalseで埋める
-                for item in selected_items:
-                    this_player_data_for_items[item].append(0) # 0で埋める
-                is_my_team_data.append(False)
-        for index, item in enumerate(selected_items):
-            chart_type = 'line' if index == 1 else 'bar'
+                # データがない空の年は0で埋める
+                for an_item in selected_items:
+                    this_player_data_for_items[an_item].append(0.0)
+                team_list_data.append("データなし")
 
-            print(player)
-            print(this_player_data_for_items[item])
+        # グラフ描画用のデータセットを作成
+        for index, current_item in enumerate(selected_items):
+            chart_type = 'line' if index == 1 else 'bar'
+            
             datasets.append({
-            'label': f"{player} ({item})",
-            'data': this_player_data_for_items[item],
-            'isMyTeam': is_my_team_data,
-            'item': item,
-            'type': chart_type,
-            'fill': False,
-            'tension': 0.1
-        })
+                'label': f"{player} ({current_item})",
+                'data': this_player_data_for_items[current_item],
+                'teamList': team_list_data, # ★ここでJSにチーム名リストを渡す
+                'item': current_item,
+                'type': chart_type,
+                'fill': False,
+                'tension': 0.1
+            })
         
     return render_template('analysis.html',
                            item=selected_items,
