@@ -145,7 +145,7 @@ def analyze():
         return f"エラー: CSVに 'チーム' 列が見つかりません"
     team_col = team_col_list[0]
 
-    player_col = '投 手' if player_type == 'pitcher' else '選手'
+    player_col = '投　手' if player_type == 'pitcher' else '選手'
 
     # 選択された選手の全データを抽出
     filtered_df = df[
@@ -165,7 +165,7 @@ def analyze():
         
         # 項目ごとにデータを格納する配列を初期化
         this_player_data_for_items = {an_item: [] for an_item in selected_items}
-        team_list_data = [] # ★チーム名文字列を格納する配列
+        team_list_data = []
     
         # 年度のループ
         for y_str in all_years:
@@ -174,30 +174,36 @@ def analyze():
 
             if not year_df.empty:
                 # データがある場合
+                current_team = year_df[team_col].iloc[0]
+                team_list_data.append(str(current_team))
+                
+                
                 for an_item in selected_items:
-                    # 合算する項目
-                    if an_item in ["打席", "打数", "安打", "本塁打", "打点", "盗塁", "試合", "得点", "三振", "四球", "死球", "犠打", "犠飛", "勝利", "敗戦", "セーブ", "ホールド"]:
-                        value = year_df[an_item].sum()
-                    # 平均する項目
-                    elif an_item in ["打率", "出塁率", "長打率", "OPS", "防御率"]:
-                        value = year_df[an_item].mean()
-                    # その他
+                    
+                    # ★【ここを追加】ピッチャーデータで「試合」が指定された場合、「登板」列に読み替える
+                    csv_item = an_item
+                    if player_type == 'pitcher' and an_item == '試合' and '登板' in year_df.columns:
+                        csv_item = '登板'
+
+                    # 数値をすべて計算可能な状態に変換（csv_item を使うように変更）
+                    year_df[csv_item] = year_df[csv_item].astype(str).str.strip().str.replace('---', '0').str.replace('-', '0')
+                    year_df[csv_item] = pd.to_numeric(year_df[csv_item], errors='coerce').fillna(0)
+
+                    # 率系の項目は「平均（mean）」、それ以外のカウント系はすべて「合計（sum）」にする
+                    if an_item in ["打率", "出塁率", "長打率", "OPS", "防御率", "勝率"]:
+                        value = year_df[csv_item].mean()
                     else:
-                        value = year_df[an_item].iloc[-1]
+                        value = year_df[csv_item].sum()
                     
                     this_player_data_for_items[an_item].append(
                         float(value) if pd.notna(value) else 0.0
                     )
-
-                # ★その年のチーム名を取得して結合する
-                teams = year_df[team_col].dropna().astype(str).tolist()
-                team_string = "、".join(teams) if teams else "所属なし"
-                team_list_data.append(team_string)
+                
             else:
-                # データがない空の年は0で埋める
+              
+                team_list_data.append("")
                 for an_item in selected_items:
                     this_player_data_for_items[an_item].append(0.0)
-                team_list_data.append("データなし")
 
         # グラフ描画用のデータセットを作成
         for index, current_item in enumerate(selected_items):
